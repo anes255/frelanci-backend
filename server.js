@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/database');
 const { errorHandler } = require('./middleware/errorHandler');
+const createDefaultAdmins = require('./config/createAdmins');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -18,8 +19,11 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Connect to database
-connectDB();
+// Connect to database and create admin accounts
+connectDB().then(async () => {
+  // Auto-create admin accounts after database connection
+  await createDefaultAdmins();
+});
 
 // API Routes
 app.use('/api/auth', authRoutes);
