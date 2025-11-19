@@ -19,6 +19,7 @@ exports.register = async (req, res) => {
       password: hashedPassword,
       userType,
       name,
+      role: 'user', // Default role for regular users
       isApproved: userType === 'client' ? true : false
     };
 
@@ -27,7 +28,11 @@ exports.register = async (req, res) => {
     }
 
     const user = await User.create(userData);
-    const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET);
+    const token = jwt.sign({ 
+      userId: user._id, 
+      email: user.email,
+      role: user.role 
+    }, JWT_SECRET);
 
     res.status(201).json({
       message: 'User registered successfully',
@@ -37,6 +42,7 @@ exports.register = async (req, res) => {
         email: user.email,
         name: user.name,
         userType: user.userType,
+        role: user.role,
         isApproved: user.isApproved,
         profilePicture: user.profilePicture
       }
@@ -60,7 +66,11 @@ exports.login = async (req, res) => {
       return res.status(400).json({ error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign({ userId: user._id, email: user.email }, JWT_SECRET);
+    const token = jwt.sign({ 
+      userId: user._id, 
+      email: user.email,
+      role: user.role 
+    }, JWT_SECRET);
 
     res.json({
       message: 'Login successful',
@@ -70,6 +80,7 @@ exports.login = async (req, res) => {
         email: user.email,
         name: user.name,
         userType: user.userType,
+        role: user.role,
         isApproved: user.isApproved,
         profilePicture: user.profilePicture
       }
