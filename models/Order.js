@@ -12,6 +12,7 @@ const orderSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   requirements: String,
   deliveryDate: Date,
+  isRated: { type: Boolean, default: false },
   review: {
     rating: Number,
     comment: String,
