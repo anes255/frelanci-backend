@@ -2,7 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/database');
 const { errorHandler } = require('./middleware/errorHandler');
-const createDefaultAdmins = require('./config/createAdmins');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -11,6 +10,7 @@ const jobRoutes = require('./routes/job');
 const orderRoutes = require('./routes/order');
 const adminRoutes = require('./routes/admin');
 const maintenanceRoutes = require('./routes/maintenance');
+const ratingRoutes = require('./routes/rating');
 
 const app = express();
 
@@ -19,11 +19,8 @@ app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Connect to database and create admin accounts
-connectDB().then(async () => {
-  // Auto-create admin accounts after database connection
-  await createDefaultAdmins();
-});
+// Connect to database
+connectDB();
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -32,6 +29,7 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/ratings', ratingRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -46,7 +44,7 @@ app.get('/api/health', (req, res) => {
 app.get('/', (req, res) => {
   res.json({ 
     message: 'Freelanci API Server',
-    version: '1.0.0',
+    version: '2.0.0',
     status: 'running',
     endpoints: {
       health: '/api/health',
@@ -55,7 +53,8 @@ app.get('/', (req, res) => {
       jobs: '/api/jobs',
       orders: '/api/orders',
       admin: '/api/admin',
-      maintenance: '/api/maintenance'
+      maintenance: '/api/maintenance',
+      ratings: '/api/ratings'
     }
   });
 });
