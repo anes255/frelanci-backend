@@ -8,11 +8,14 @@ const jobSchema = new mongoose.Schema({
   price: { type: Number, required: true },
   deliveryTime: { type: Number, required: true },
   images: [String],
+  thumbnails: [String], // Thumbnails of past works
   tags: [String],
   requirements: String,
   isActive: { type: Boolean, default: true },
+  isPinned: { type: Boolean, default: false }, // For maintenance admin pinned posts
   views: { type: Number, default: 0 },
   orders: { type: Number, default: 0 },
+  averageRating: { type: Number, default: 0 }, // Freelancer's average rating
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
