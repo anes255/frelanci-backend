@@ -5,6 +5,7 @@ const { verifyToken } = require('../middleware/auth');
 
 router.post('/', verifyToken, jobController.createJob);
 router.get('/', jobController.getAllJobs);
+router.get('/categories/list', jobController.getCategories);
 router.get('/:id', jobController.getJobById);
 router.put('/:id', verifyToken, jobController.updateJob);
 router.delete('/:id', verifyToken, jobController.deleteJob);
