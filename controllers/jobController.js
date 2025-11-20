@@ -5,17 +5,25 @@ exports.createJob = async (req, res) => {
   try {
     const user = await User.findById(req.user.userId);
     
-    if (user.userType !== 'freelancer') {
+    // Allow both freelancers and maintenance admin to create jobs
+    const isMaintenance = user.email === 'maintenance@freelanci.com';
+    
+    if (user.userType !== 'freelancer' && !isMaintenance) {
       return res.status(403).json({ error: 'Only freelancers can create jobs' });
     }
     
-    if (!user.isApproved) {
+    if (!user.isApproved && !isMaintenance) {
       return res.status(403).json({ error: 'Your account needs admin approval to post jobs' });
     }
 
+    // Get freelancer's current rating
+    const averageRating = user.rating || 0;
+
     const job = await Job.create({
       ...req.body,
-      freelancerId: req.user.userId
+      freelancerId: req.user.userId,
+      averageRating,
+      isPinned: isMaintenance ? true : false // Auto-pin if created by maintenance
     });
 
     res.status(201).json(job);
@@ -26,7 +34,14 @@ exports.createJob = async (req, res) => {
 
 exports.getAllJobs = async (req, res) => {
   try {
-    const { category, search, minPrice, maxPrice, sort } = req.query;
+    const { 
+      category, 
+      search, 
+      minPrice, 
+      maxPrice, 
+      sort,
+      minRating 
+    } = req.query;
     
     let query = { isActive: true };
     
@@ -43,13 +58,18 @@ exports.getAllJobs = async (req, res) => {
     if (minPrice) query.price = { $gte: Number(minPrice) };
     if (maxPrice) query.price = { ...query.price, $lte: Number(maxPrice) };
     
-    let sortOption = { createdAt: -1 };
-    if (sort === 'price_low') sortOption = { price: 1 };
-    if (sort === 'price_high') sortOption = { price: -1 };
-    if (sort === 'popular') sortOption = { orders: -1 };
+    // Filter by minimum rating
+    if (minRating) query.averageRating = { $gte: Number(minRating) };
+    
+    let sortOption = { isPinned: -1, createdAt: -1 }; // Pinned posts first
+    
+    if (sort === 'price_low') sortOption = { isPinned: -1, price: 1 };
+    if (sort === 'price_high') sortOption = { isPinned: -1, price: -1 };
+    if (sort === 'popular') sortOption = { isPinned: -1, orders: -1 };
+    if (sort === 'rating') sortOption = { isPinned: -1, averageRating: -1 };
     
     const jobs = await Job.find(query)
-      .populate('freelancerId', 'name profilePicture rating completedJobs')
+      .populate('freelancerId', 'name profilePicture rating completedJobs totalRatings')
       .sort(sortOption);
     
     res.json(jobs);
@@ -61,7 +81,7 @@ exports.getAllJobs = async (req, res) => {
 exports.getJobById = async (req, res) => {
   try {
     const job = await Job.findById(req.params.id)
-      .populate('freelancerId', 'name profilePicture rating completedJobs fieldOfWork');
+      .populate('freelancerId', 'name profilePicture rating completedJobs fieldOfWork totalRatings ratingBreakdown');
     
     if (!job) {
       return res.status(404).json({ error: 'Job not found' });
@@ -78,10 +98,22 @@ exports.getJobById = async (req, res) => {
 
 exports.updateJob = async (req, res) => {
   try {
-    const job = await Job.findOne({ _id: req.params.id, freelancerId: req.user.userId });
+    const user = await User.findById(req.user.userId);
+    const isMaintenance = user.email === 'maintenance@freelanci.com';
+    
+    const query = isMaintenance 
+      ? { _id: req.params.id } 
+      : { _id: req.params.id, freelancerId: req.user.userId };
+    
+    const job = await Job.findOne(query);
     
     if (!job) {
       return res.status(404).json({ error: 'Job not found or unauthorized' });
+    }
+    
+    // Prevent non-maintenance users from setting isPinned
+    if (!isMaintenance && req.body.isPinned !== undefined) {
+      delete req.body.isPinned;
     }
     
     Object.assign(job, req.body, { updatedAt: Date.now() });
@@ -95,10 +127,14 @@ exports.updateJob = async (req, res) => {
 
 exports.deleteJob = async (req, res) => {
   try {
-    const job = await Job.findOneAndDelete({ 
-      _id: req.params.id, 
-      freelancerId: req.user.userId 
-    });
+    const user = await User.findById(req.user.userId);
+    const isMaintenance = user.email === 'maintenance@freelanci.com';
+    
+    const query = isMaintenance 
+      ? { _id: req.params.id }
+      : { _id: req.params.id, freelancerId: req.user.userId };
+    
+    const job = await Job.findOneAndDelete(query);
     
     if (!job) {
       return res.status(404).json({ error: 'Job not found or unauthorized' });
@@ -118,6 +154,16 @@ exports.getFreelancerJobs = async (req, res) => {
     }).sort({ createdAt: -1 });
     
     res.json(jobs);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// Get job categories
+exports.getCategories = async (req, res) => {
+  try {
+    const categories = await Job.distinct('category', { isActive: true });
+    res.json(categories);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
