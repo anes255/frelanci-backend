@@ -8,6 +8,5 @@ router.put('/users/:id/approve', verifyToken, isAdmin, adminController.approveUs
 router.delete('/users/:id', verifyToken, isAdmin, adminController.deleteUser);
 router.get('/orders', verifyToken, isAdmin, adminController.getAllOrders);
 router.get('/jobs', verifyToken, isAdmin, adminController.getAllJobs);
-router.get('/payment-stats', verifyToken, isAdmin, adminController.getPaymentStats);
 
 module.exports = router;
