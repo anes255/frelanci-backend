@@ -8,6 +8,5 @@ router.put('/settings', verifyToken, isMaintenance, maintenanceController.update
 router.get('/errors', verifyToken, isMaintenance, maintenanceController.getErrors);
 router.delete('/errors', verifyToken, isMaintenance, maintenanceController.clearErrors);
 router.get('/stats', verifyToken, isMaintenance, maintenanceController.getStats);
-router.get('/payment-stats', verifyToken, isMaintenance, maintenanceController.getPaymentStats);
 
 module.exports = router;
