@@ -64,7 +64,7 @@ exports.getMyOrders = async (req, res) => {
 exports.getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id)
-      .populate('jobId')
+      .populate('jobId', 'title price category')
       .populate('clientId', 'name profilePicture email')
       .populate('freelancerId', 'name profilePicture email');
     
@@ -73,13 +73,17 @@ exports.getOrderById = async (req, res) => {
     }
     
     // Check if user is part of this order
-    if (order.clientId._id.toString() !== req.user.userId && 
-        order.freelancerId._id.toString() !== req.user.userId) {
-      return res.status(403).json({ error: 'Unauthorized' });
+    const userId = req.user.userId;
+    const clientId = order.clientId?._id?.toString();
+    const freelancerId = order.freelancerId?._id?.toString();
+    
+    if (clientId !== userId && freelancerId !== userId) {
+      return res.status(403).json({ error: 'Unauthorized to view this order' });
     }
     
     res.json(order);
   } catch (error) {
+    console.error('Error in getOrderById:', error);
     res.status(500).json({ error: error.message });
   }
 };
