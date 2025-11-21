@@ -70,33 +70,3 @@ exports.getAllJobs = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
-
-exports.getPaymentStats = async (req, res) => {
-  try {
-    const totalOrders = await Order.countDocuments();
-    const approvedPayments = await Order.countDocuments({ paymentApproved: true });
-    const pendingPayments = await Order.countDocuments({ paymentApproved: false });
-    
-    const totalRevenue = await Order.aggregate([
-      { $match: { paymentApproved: true } },
-      { $group: { _id: null, total: { $sum: '$price' } } }
-    ]);
-    
-    const recentApprovals = await Order.find({ paymentApproved: true })
-      .populate('freelancerId', 'name email')
-      .populate('clientId', 'name email')
-      .populate('jobId', 'title')
-      .sort({ paymentApprovedAt: -1 })
-      .limit(20);
-    
-    res.json({
-      totalOrders,
-      approvedPayments,
-      pendingPayments,
-      totalRevenue: totalRevenue.length > 0 ? totalRevenue[0].total : 0,
-      recentApprovals
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
