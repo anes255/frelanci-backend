@@ -60,8 +60,14 @@ exports.getStats = async (req, res) => {
       totalOrders: await Order.countDocuments(),
       activeOrders: await Order.countDocuments({ status: { $in: ['pending', 'in_progress'] } }),
       completedOrders: await Order.countDocuments({ status: 'completed' }),
+      approvedPayments: await Order.countDocuments({ paymentApproved: true }),
+      pendingPayments: await Order.countDocuments({ paymentApproved: false }),
       totalRevenue: await Order.aggregate([
         { $match: { status: 'completed' } },
+        { $group: { _id: null, total: { $sum: '$price' } } }
+      ]),
+      approvedRevenue: await Order.aggregate([
+        { $match: { paymentApproved: true } },
         { $group: { _id: null, total: { $sum: '$price' } } }
       ]),
       recentErrors: await ErrorLog.countDocuments({ 
@@ -70,8 +76,39 @@ exports.getStats = async (req, res) => {
     };
     
     stats.totalRevenue = stats.totalRevenue[0]?.total || 0;
+    stats.approvedRevenue = stats.approvedRevenue[0]?.total || 0;
     
     res.json(stats);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getPaymentStats = async (req, res) => {
+  try {
+    const totalOrders = await Order.countDocuments();
+    const approvedPayments = await Order.countDocuments({ paymentApproved: true });
+    const pendingPayments = await Order.countDocuments({ paymentApproved: false });
+    
+    const totalRevenue = await Order.aggregate([
+      { $match: { paymentApproved: true } },
+      { $group: { _id: null, total: { $sum: '$price' } } }
+    ]);
+    
+    const recentApprovals = await Order.find({ paymentApproved: true })
+      .populate('freelancerId', 'name email')
+      .populate('clientId', 'name email')
+      .populate('jobId', 'title')
+      .sort({ paymentApprovedAt: -1 })
+      .limit(20);
+    
+    res.json({
+      totalOrders,
+      approvedPayments,
+      pendingPayments,
+      totalRevenue: totalRevenue.length > 0 ? totalRevenue[0].total : 0,
+      recentApprovals
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
